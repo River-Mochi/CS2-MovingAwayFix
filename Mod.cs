@@ -1,61 +1,122 @@
-namespace CS2-MovingAwayFix
+namespace MovingAwayFix
 {
     using Colossal.IO.AssetDatabase;
+    using Colossal.Localization;
     using Colossal.Logging;
+    using CS2Shared.RiverMochi;
     using Game;
-    using Game.Input;
     using Game.Modding;
     using Game.SceneFlow;
-    using UnityEngine;
+    using Game.Simulation;
+    using System;
+    using System.Reflection;
 
-    public class Mod : IMod
+    public sealed class Mod : IMod
     {
-        public static ILog log = LogManager.GetLogger($"{nameof(CS2-MovingAwayFix)}.{nameof(Mod)}").SetShowsErrorsInUI(false);
-        private Setting m_Setting;
-        public static ProxyAction m_ButtonAction;
-        public static ProxyAction m_AxisAction;
-        public static ProxyAction m_VectorAction;
+        public const string ModName = "Moving Away Fix";
+        public const string ModId = "MovingAwayFix";
+        public const string ModTag = "[MAF]";
+        public const string ShortName = "Moving Away Fix";
 
-        public const string kButtonActionName = "ButtonBinding";
-        public const string kAxisActionName = "FloatBinding";
-        public const string kVectorActionName = "Vector2Binding";
+        private static bool s_BannerLogged;
+
+        public static readonly string ModVersion =
+            Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
+
+        public static readonly ILog s_Log =
+            LogManager.GetLogger(ModId).SetShowsErrorsInUI(false);
+
+        public static Setting? Setting
+        {
+            get; private set;
+        }
 
         public void OnLoad(UpdateSystem updateSystem)
         {
-            log.Info(nameof(OnLoad));
+            LogUtils.Configure(ModId);
+            ShellOpen.Configure(s_Log, ModId, ModTag);
 
-            if (GameManager.instance.modManager.TryGetExecutableAsset(this, out var asset))
-                log.Info($"Current mod asset at {asset.path}");
+            if (!s_BannerLogged)
+            {
+                s_BannerLogged = true;
+                LogUtils.Info(s_Log, () => $"{ModId} {ModTag} v{ModVersion} OnLoad");
+            }
 
-            m_Setting = new Setting(this);
-            m_Setting.RegisterInOptionsUI();
-            GameManager.instance.localizationManager.AddSource("en-US", new LocaleEN(m_Setting));
+            Setting setting = new Setting(this);
+            Setting = setting;
 
-            m_Setting.RegisterKeyBindings();
+            try
+            {
+                LocalizationManager? lm = GameManager.instance?.localizationManager;
+                if (lm != null)
+                {
+                    lm.AddSource("en-US", new LocaleEN(setting));
+                }
+                else
+                {
+                    LogUtils.WarnOnce(
+                        s_Log,
+                        key: "LocalizationManagerNull",
+                        messageFactory: () => $"{ModTag} LocalizationManager is null; skipping locale registration.");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogUtils.WarnOnce(
+                    s_Log,
+                    key: "LocaleRegistrationFailed",
+                    messageFactory: () => $"{ModTag} Locale registration failed; Options UI text may be missing.",
+                    exception: ex);
+            }
 
-            m_ButtonAction = m_Setting.GetAction(kButtonActionName);
-            m_AxisAction = m_Setting.GetAction(kAxisActionName);
-            m_VectorAction = m_Setting.GetAction(kVectorActionName);
+            try
+            {
+                Setting defaults = new Setting(this);
+                AssetDatabase.global.LoadSettings(ModId, setting, defaults, userSetting: true);
+            }
+            catch (Exception ex)
+            {
+                LogUtils.WarnOnce(
+                    s_Log,
+                    key: "LoadSettingsFailed",
+                    messageFactory: () => $"{ModTag} LoadSettings failed; using defaults.",
+                    exception: ex);
+            }
 
-            m_ButtonAction.shouldBeEnabled = true;
-            m_AxisAction.shouldBeEnabled = true;
-            m_VectorAction.shouldBeEnabled = true;
+            try
+            {
+                setting.RegisterInOptionsUI();
+            }
+            catch (Exception ex)
+            {
+                LogUtils.WarnOnce(
+                    s_Log,
+                    key: "RegisterOptionsFailed",
+                    messageFactory: () => $"{ModTag} RegisterInOptionsUI failed; mod options may be missing.",
+                    exception: ex);
+            }
 
-            m_ButtonAction.onInteraction += (_, phase) => log.Info($"[{m_ButtonAction.name}] On{phase} {m_ButtonAction.ReadValue<float>()}");
-            m_AxisAction.onInteraction += (_, phase) => log.Info($"[{m_AxisAction.name}] On{phase} {m_AxisAction.ReadValue<float>()}");
-            m_VectorAction.onInteraction += (_, phase) => log.Info($"[{m_VectorAction.name}] On{phase} {m_VectorAction.ReadValue<Vector2>()}");
-
-            AssetDatabase.global.LoadSettings(nameof(CS2-MovingAwayFix), m_Setting, new Setting(this));
+            updateSystem.UpdateBefore<MovingAwayFixSystem, ResidentAISystem>(SystemUpdatePhase.GameSimulation);
         }
 
-        public void OnDispose( )
+        public void OnDispose()
         {
-            log.Info(nameof(OnDispose));
-            if (m_Setting != null)
+            LogUtils.Info(s_Log, () => $"{ModTag} OnDispose");
+
+            try
             {
-                m_Setting.UnregisterInOptionsUI();
-                m_Setting = null;
+                Setting?.UnregisterInOptionsUI();
             }
+            catch (Exception ex)
+            {
+                LogUtils.WarnOnce(
+                    s_Log,
+                    key: "UnregisterOptionsFailed",
+                    messageFactory: () => $"{ModTag} UnregisterInOptionsUI failed.",
+                    exception: ex);
+            }
+
+            Setting = null;
         }
     }
 }
