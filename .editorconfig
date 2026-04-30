@@ -1,0 +1,152 @@
+﻿# File: .editorconfig version 0.5.0 for Resharper
+# Purpose:
+#   - Consistent whitespace + line endings across the repo.
+#   - C# style preferences (explicit types, naming scheme).
+#   - Disable analyzer warnings that conflict with the project
+#     (notably: flat namespaces that do NOT match folder structure).
+
+root = true
+
+# =========================
+# Global defaults (all files)
+# =========================
+[*]
+charset = utf-8
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.ps1]
+end_of_line = crlf
+
+# =========================
+# C# files
+# =========================
+[*.cs]
+end_of_line = crlf
+indent_size = 4
+
+# ---- Namespace policy (flat namespace allowed) ----
+# Roslyn
+
+# ReSharper
+# resharper_check_namespace_highlighting = none
+
+# ---- General style ----
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_event = false:suggestion
+
+# Prefer explicit types (reduces "use var" churn)
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = false:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# ---- Analyzer tuning ----
+
+# IMPORTANT:
+# Do NOT set dotnet_diagnostic.IDE1006.severity = none
+# All .NET naming-rule violations use IDE1006.
+# Leaving it unset allows the naming rules below to work.
+
+# Optional:
+# If the repo is legacy and ReSharper naming noise is still annoying,
+# uncomment the next line to stop ReSharper's own naming inspection
+# while still keeping the naming rules for code generation/refactorings.
+# resharper_inconsistent_naming_highlighting = none
+
+
+# =========================
+# XML files (CS2 publish/config/etc)
+# =========================
+[*.xml]
+end_of_line = crlf
+
+
+# =========================
+# Web/UI assets (JS/TS/CSS/JSON/etc) use LF
+# =========================
+[*.{ts,tsx,js,mjs,css,scss,html,json,md,yml,yaml}]
+end_of_line = lf
+
+
+# =========================
+# Naming symbols (targets)
+# =========================
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_symbols.interfaces.applicable_accessibilities = *
+
+dotnet_naming_symbols.types_and_members.applicable_kinds = class, struct, enum, delegate, property, method, event
+dotnet_naming_symbols.types_and_members.applicable_accessibilities = *
+
+# Broad private-field rule; static fields are overridden below
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_symbols.private_static_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_static_fields.required_modifiers = static
+
+# All const fields
+dotnet_naming_symbols.const_fields.applicable_kinds = field
+dotnet_naming_symbols.const_fields.required_modifiers = const
+dotnet_naming_symbols.const_fields.applicable_accessibilities = *
+
+# Intersection rule so non-public const fields use kName instead of s_name
+dotnet_naming_symbols.non_public_const_fields.applicable_kinds = field
+dotnet_naming_symbols.non_public_const_fields.required_modifiers = const
+dotnet_naming_symbols.non_public_const_fields.applicable_accessibilities = private, internal, protected, protected_internal, private_protected
+
+
+# =========================
+# Naming styles (how)
+# =========================
+dotnet_naming_style.pascal.capitalization = pascal_case
+
+dotnet_naming_style.interface_i.required_prefix = I
+dotnet_naming_style.interface_i.capitalization = pascal_case
+
+dotnet_naming_style.m_prefix.required_prefix = m_
+dotnet_naming_style.m_prefix.capitalization = camel_case
+
+dotnet_naming_style.s_prefix.required_prefix = s_
+dotnet_naming_style.s_prefix.capitalization = camel_case
+
+dotnet_naming_style.k_prefix_pascal.required_prefix = k
+dotnet_naming_style.k_prefix_pascal.capitalization = pascal_case
+
+# dotnet_naming_style.camel.capitalization = camel_case
+# =========================
+# Rules (symbols × styles)
+# =========================
+# Interfaces: IName
+dotnet_naming_rule.interfaces_must_start_with_i.symbols = interfaces
+dotnet_naming_rule.interfaces_must_start_with_i.style = interface_i
+dotnet_naming_rule.interfaces_must_start_with_i.severity = suggestion
+
+# Types & non-field members: PascalCase
+dotnet_naming_rule.types_and_members_pascal.symbols = types_and_members
+dotnet_naming_rule.types_and_members_pascal.style = pascal
+dotnet_naming_rule.types_and_members_pascal.severity = suggestion
+
+# Private fields: m_name
+dotnet_naming_rule.private_fields_m_prefix.symbols = private_fields
+dotnet_naming_rule.private_fields_m_prefix.style = m_prefix
+dotnet_naming_rule.private_fields_m_prefix.severity = suggestion
+
+# Private static fields: s_name
+dotnet_naming_rule.private_static_fields_s_prefix.symbols = private_static_fields
+dotnet_naming_rule.private_static_fields_s_prefix.style = s_prefix
+dotnet_naming_rule.private_static_fields_s_prefix.severity = suggestion
+
+# Const fields: kName
+dotnet_naming_rule.const_fields_k_prefix.symbols = const_fields
+dotnet_naming_rule.const_fields_k_prefix.style = k_prefix_pascal
+dotnet_naming_rule.const_fields_k_prefix.severity = suggestion
+
+# Non-public const fields: kName
+# This breaks the overlap where 'static' would otherwise catch consts.
+dotnet_naming_rule.non_public_const_fields_k_prefix.symbols = non_public_const_fields
+dotnet_naming_rule.non_public_const_fields_k_prefix.style = k_prefix_pascal
+dotnet_naming_rule.non_public_const_fields_k_prefix.severity = suggestion
