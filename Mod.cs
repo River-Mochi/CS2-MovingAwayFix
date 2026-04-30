@@ -1,4 +1,4 @@
-﻿namespace CS2_NoHighwayWalkers
+namespace CS2-MovingAwayFix
 {
     using Colossal.IO.AssetDatabase;
     using Colossal.Logging;
@@ -10,7 +10,7 @@
 
     public class Mod : IMod
     {
-        public static ILog log = LogManager.GetLogger($"{nameof(CS2_NoHighwayWalkers)}.{nameof(Mod)}").SetShowsErrorsInUI(false);
+        public static ILog log = LogManager.GetLogger($"{nameof(CS2-MovingAwayFix)}.{nameof(Mod)}").SetShowsErrorsInUI(false);
         private Setting m_Setting;
         public static ProxyAction m_ButtonAction;
         public static ProxyAction m_AxisAction;
@@ -45,7 +45,7 @@
             m_AxisAction.onInteraction += (_, phase) => log.Info($"[{m_AxisAction.name}] On{phase} {m_AxisAction.ReadValue<float>()}");
             m_VectorAction.onInteraction += (_, phase) => log.Info($"[{m_VectorAction.name}] On{phase} {m_VectorAction.ReadValue<Vector2>()}");
 
-            AssetDatabase.global.LoadSettings(nameof(CS2_NoHighwayWalkers), m_Setting, new Setting(this));
+            AssetDatabase.global.LoadSettings(nameof(CS2-MovingAwayFix), m_Setting, new Setting(this));
         }
 
         public void OnDispose( )

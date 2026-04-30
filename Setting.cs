@@ -1,4 +1,4 @@
-﻿namespace CS2_NoHighwayWalkers
+namespace CS2-MovingAwayFix
 {
     using Colossal;
     using Colossal.IO.AssetDatabase;
@@ -9,7 +9,7 @@
     using Game.UI.Widgets;
     using System.Collections.Generic;
 
-    [FileLocation(nameof(CS2_NoHighwayWalkers))]
+    [FileLocation(nameof(CS2-MovingAwayFix))]
     [SettingsUIGroupOrder(kButtonGroup, kToggleGroup, kSliderGroup, kDropdownGroup, kKeybindingGroup)]
     [SettingsUIShowGroupName(kButtonGroup, kToggleGroup, kSliderGroup, kDropdownGroup, kKeybindingGroup)]
     [SettingsUIKeyboardAction(Mod.kVectorActionName, ActionType.Vector2, usages: new string[] { Usages.kMenuUsage, "TestUsage" }, interactions: new string[] { "UIButton" }, processors: new string[] { "ScaleVector2(x=100,y=100)" })]
@@ -190,7 +190,7 @@
         {
             return new Dictionary<string, string>
             {
-                { m_Setting.GetSettingsLocaleID(), "CS2_NoHighwayWalkers" },
+                { m_Setting.GetSettingsLocaleID(), "CS2-MovingAwayFix" },
                 { m_Setting.GetOptionTabLocaleID(Setting.kSection), "Main" },
 
                 { m_Setting.GetOptionGroupLocaleID(Setting.kButtonGroup), "Buttons" },
