@@ -40,25 +40,32 @@ namespace MovingAwayFix
 
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.EnableMovingAwayFix)), "No Highway Walkers" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.EnableMovingAwayFix)),
-                    "Clears IgnoreTransport from moving-away residents so vanilla pathfinding can consider public transport again.\n" +
-                    "The mod also marks their path obsolete so vanilla repaths them right away.\n" +
-                    "Tip: a direct bus or rail connection to the outside connection helps a lot." },
+                    "Fixes moving-out cims who get stuck walking for miles on highways instead of using nearby public transport.\n" +
+                    "Clears IgnoreTransport from moving-away residents so vanilla pathfinding can consider public transport again.\n"
 
-                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMovingAway)), "Moving away" },
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMovingAway)), "Moving out" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusMovingAway)),
-                    "Current moving-away residents. Status scans only when the Options menu asks for this row." },
+                    "Current moving-away residents. For the best performance, Status scans only when in the Options menu, never in the city per frame." },
 
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMovingIn)), "Moving in" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusMovingIn)),
                     "Current active moving-in residents. This is informational only." },
 
-                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMonthly)), "Population monthly" },
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMonthly)), "Monthly" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusMonthly)),
-                    "Moved-in and moved-away monthly totals from the vanilla Population infoview statistics." },
+                    "Moved-in and moved-away monthly totals from the vanilla Population infoview panel." },
 
-                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusNote)), "Status note" },
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusNote)), "Updated" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusNote)),
                     "Timestamp for the cached Options-menu status snapshot." },
+
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatsToLog)), "Stats to Log" },
+                { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatsToLog)),
+                    "Writes current status counts and 5 walking moving-away sample IDs to the mod log for Scene Explorer checks." },
+
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.OpenLog)), "Open Log" },
+                { m_Setting.GetOptionDescLocaleID(nameof(Setting.OpenLog)),
+                    "Opens <MovingAwayFix.log> when possible, otherwise opens the <Logs/> folder." },
 
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.EnableDebugLogging)), "Enable debug logging" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.EnableDebugLogging)),
@@ -81,16 +88,16 @@ namespace MovingAwayFix
                 { MovingAwayStatus.KeyNoCity, "No city loaded, run the city for a bit to get data." },
 
                 { MovingAwayStatus.KeyMovingAwayRow,
-                    "{0} now | {1} walking | {2} still Ignore Transport" },
+                    "{0} leaving | {1} walking | {2} IgnoreTransport" },
 
                 { MovingAwayStatus.KeyMovingInRow,
                     "{0} active now" },
 
                 { MovingAwayStatus.KeyMonthlyRow,
-                    "{0} moved in/mo. | {1} moved away/mo." },
+                    "{0} in/mo | {1} out/mo" },
 
                 { MovingAwayStatus.KeyNoteRow,
-                    "{0} | Options-only scan | updated {1}" },
+                    "{0} | updated {1}" },
             };
         }
 

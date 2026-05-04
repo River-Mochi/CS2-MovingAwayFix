@@ -4,6 +4,7 @@
 namespace MovingAwayFix
 {
     using Colossal.IO.AssetDatabase;
+    using CS2Shared.RiverMochi;
     using Game.Modding;
     using Game.Settings;
     using System;
@@ -35,6 +36,8 @@ namespace MovingAwayFix
         public const string DebugGroup = "Debug";
         public const string AboutInfoGroup = "Info";
         public const string AboutLinksGroup = "Support Links";
+
+        public const string StatusButtonsRow = "StatusButtons";
 
         private const string UrlParadox =
             "https://mods.paradoxplaza.com/authors/River-mochi/cities_skylines_2?games=cities_skylines_2&orderBy=desc&sortBy=best&time=alltime";
@@ -89,6 +92,40 @@ namespace MovingAwayFix
             {
                 RefreshStatusSafe();
                 return MovingAwayStatus.NoteRow;
+            }
+        }
+
+        [SettingsUISection(ActionsTab, StatusGroup)]
+        [SettingsUIButtonGroup(StatusButtonsRow)]
+        [SettingsUIButton]
+        public bool StatsToLog
+        {
+            set
+            {
+                if (!value)
+                {
+                    return;
+                }
+
+                // Full details belong in the log so Options UI stays compact.
+                MovingAwayStatus.LogDetailedReport();
+            }
+        }
+
+        [SettingsUISection(ActionsTab, StatusGroup)]
+        [SettingsUIButtonGroup(StatusButtonsRow)]
+        [SettingsUIButton]
+        public bool OpenLog
+        {
+            set
+            {
+                if (!value)
+                {
+                    return;
+                }
+
+                // Opens MovingAwayFix.log when it exists; otherwise opens the Logs folder.
+                ShellOpen.OpenModLogOrLogsFolder();
             }
         }
 

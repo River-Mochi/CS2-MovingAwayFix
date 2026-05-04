@@ -1,5 +1,5 @@
 // File: Systems/MovingAwayStatusSystem.cs
-// Purpose: Read-only Options menu snapshot for Moving Away Fix status.
+// Purpose: Read-only Options menu snapshot and log report for Moving Away Fix status.
 
 namespace MovingAwayFix
 {
@@ -14,11 +14,31 @@ namespace MovingAwayFix
     using Game.Simulation;
     using Game.Tools;
     using System;
+    using System.Collections.Generic;
+    using System.Text;
     using Unity.Collections;
     using Unity.Entities;
 
     public sealed partial class MovingAwayStatusSystem : GameSystemBase
     {
+        private const int MaxReportSamples = 5;
+
+        private readonly struct WalkingSample
+        {
+            public readonly Entity Creature;
+            public readonly Entity Citizen;
+            public readonly Entity Household;
+            public readonly ResidentFlags Flags;
+
+            public WalkingSample(Entity creature, Entity citizen, Entity household, ResidentFlags flags)
+            {
+                Creature = creature;
+                Citizen = citizen;
+                Household = household;
+                Flags = flags;
+            }
+        }
+
         public readonly struct Snapshot
         {
             public readonly long MovingAwayNow;
@@ -70,6 +90,7 @@ namespace MovingAwayFix
                 .WithNone<Unspawned>()
                 .Build();
 
+            // Status is Options-only. Do not let this system run as part of simulation.
             Enabled = false;
         }
 
@@ -78,6 +99,72 @@ namespace MovingAwayFix
         }
 
         public Snapshot BuildSnapshot()
+        {
+            return BuildSnapshotInternal(samples: null);
+        }
+
+        public string BuildDetailedReport()
+        {
+            var samples = new List<WalkingSample>(MaxReportSamples);
+            Snapshot snapshot = BuildSnapshotInternal(samples);
+
+            string fixState = Mod.Setting?.EnableMovingAwayFix == true
+                ? "ON"
+                : "OFF";
+
+            var sb = new StringBuilder();
+
+            sb.AppendLine();
+            sb.AppendLine("==================== [MAF] MOVING AWAY FIX STATUS ====================");
+            sb.AppendLine("Feature: No Highway Walkers");
+            sb.AppendLine("Purpose: lets moving-away cims consider public transport again by clearing IgnoreTransport.");
+            sb.AppendLine();
+            sb.AppendLine($"Fix enabled: {fixState}");
+            sb.AppendLine($"Simulation frame: {snapshot.SimulationFrame}");
+            sb.AppendLine($"Updated local time: {snapshot.SnapshotTimeLocal:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine();
+            sb.AppendLine("Compact counts");
+            sb.AppendLine($"- Moving away now: {snapshot.MovingAwayNow:N0}");
+            sb.AppendLine($"- Moving away and walking/no vehicle: {snapshot.MovingAwayWalking:N0}");
+            sb.AppendLine($"- Moving away still IgnoreTransport: {snapshot.MovingAwayStillIgnoreTransport:N0}");
+            sb.AppendLine($"- Moving in now: {snapshot.MovingInNow:N0}");
+            sb.AppendLine($"- Population monthly moved in: {snapshot.MovedInMonthly:N0}");
+            sb.AppendLine($"- Population monthly moved away: {snapshot.MovedAwayMonthly:N0}");
+            sb.AppendLine();
+            sb.AppendLine("Scene Explorer samples");
+            sb.AppendLine("- These are moving-away walkers/no-vehicle samples, not road-classified highway checks.");
+            sb.AppendLine("- Use Creature or Citizen IDs in Scene Explorer for spot checks.");
+
+            if (samples.Count == 0)
+            {
+                sb.AppendLine("- No moving-away walking samples found.");
+            }
+            else
+            {
+                for (int i = 0; i < samples.Count; i++)
+                {
+                    WalkingSample sample = samples[i];
+
+                    sb.Append("- ");
+                    sb.Append(i + 1);
+                    sb.Append(". Creature ");
+                    AppendEntity(sb, sample.Creature);
+                    sb.Append(" | Citizen ");
+                    AppendEntity(sb, sample.Citizen);
+                    sb.Append(" | Household ");
+                    AppendEntity(sb, sample.Household);
+                    sb.Append(" | Flags=");
+                    sb.Append(sample.Flags);
+                    sb.AppendLine();
+                }
+            }
+
+            sb.AppendLine("======================================================================");
+
+            return sb.ToString();
+        }
+
+        private Snapshot BuildSnapshotInternal(List<WalkingSample>? samples)
         {
             EntityTypeHandle entityType = GetEntityTypeHandle();
             ComponentTypeHandle<Resident> residentType =
@@ -139,9 +226,15 @@ namespace MovingAwayFix
                         {
                             movingAwayNow++;
 
-                            if (IsWalking(creature, currentVehicles))
+                            bool isWalking = IsWalking(creature, currentVehicles);
+                            if (isWalking)
                             {
                                 movingAwayWalking++;
+
+                                if (samples != null && samples.Count < MaxReportSamples)
+                                {
+                                    samples.Add(new WalkingSample(creature, citizen, household, resident.m_Flags));
+                                }
                             }
 
                             if ((resident.m_Flags & ResidentFlags.IgnoreTransport) != 0)
@@ -222,6 +315,13 @@ namespace MovingAwayFix
             }
 
             return true;
+        }
+
+        private static void AppendEntity(StringBuilder sb, Entity entity)
+        {
+            sb.Append(entity.Index);
+            sb.Append(':');
+            sb.Append(entity.Version);
         }
     }
 }

@@ -1,12 +1,11 @@
 // File: Systems/MovingAwayStatus.cs
-// Purpose: UI-facing cached status rows for the Options menu.
+// Purpose: UI-facing cached status rows and log report trigger for the Options menu.
 
 namespace MovingAwayFix
 {
     using CS2Shared.RiverMochi;
     using Game;
     using Game.SceneFlow;
-    using System;
     using Unity.Entities;
 
     public static class MovingAwayStatus
@@ -23,16 +22,16 @@ namespace MovingAwayFix
         private const string FallbackNoCity = "No city loaded, run the city for a bit to get data.";
 
         private const string FallbackMovingAwayRow =
-            "Moving away: {0} now | {1} walking | {2} still IgnoreTransport";
+            "{0} leaving | {1} walking | {2} IgnoreTransport";
 
         private const string FallbackMovingInRow =
-            "Moving in: {0} active now";
+            "{0} active now";
 
         private const string FallbackMonthlyRow =
-            "Population infoview: {0} moved in/month | {1} moved away/month";
+            "{0} in/mo | {1} out/mo";
 
         private const string FallbackNoteRow =
-            "{0} | updated {1} | Options-only scan";
+            "{0} | updated {1}";
 
         public static string MovingAwayRow { get; private set; } = string.Empty;
         public static string MovingInRow { get; private set; } = string.Empty;
@@ -67,6 +66,41 @@ namespace MovingAwayFix
             }
         }
 
+        // Button action: writes a readable one-time report to the mod log.
+        public static void LogDetailedReport()
+        {
+            try
+            {
+                World world = World.DefaultGameObjectInjectionWorld;
+                if (world == null || !world.IsCreated)
+                {
+                    LogUtils.Info(Mod.s_Log, () => $"{Mod.ModTag} Status report: no world is available.");
+                    return;
+                }
+
+                GameManager gm = GameManager.instance;
+                if (gm == null || !gm.gameMode.IsGame())
+                {
+                    LogUtils.Info(Mod.s_Log, () => $"{Mod.ModTag} Status report: no city loaded.");
+                    return;
+                }
+
+                MovingAwayStatusSystem statusSystem =
+                    world.GetOrCreateSystemManaged<MovingAwayStatusSystem>();
+
+                string report = statusSystem.BuildDetailedReport();
+                LogUtils.Info(Mod.s_Log, () => report);
+
+                // Refresh compact UI rows from the same button action.
+                s_HasSnapshot = false;
+                RefreshForOptionsUi();
+            }
+            catch
+            {
+                LogUtils.Info(Mod.s_Log, () => $"{Mod.ModTag} Status report failed.");
+            }
+        }
+
         private static void RefreshForOptionsUiCore()
         {
             World world = World.DefaultGameObjectInjectionWorld;
@@ -76,7 +110,7 @@ namespace MovingAwayFix
                 return;
             }
 
-            // IsGame means a city/game session is loaded. Main menu gets the no-city message.
+            // IsGame means a city/game session is loaded. Main-menu Options gets no-city text.
             GameManager gm = GameManager.instance;
             if (gm == null || !gm.gameMode.IsGame())
             {
@@ -89,13 +123,9 @@ namespace MovingAwayFix
 
             uint simulationFrame = statusSystem.CurrentSimulationFrame;
 
-            // Options menu pauses the city, so the sim frame should not advance there.
-            // Same frame = reuse cached rows and avoid repeated status scans.
+            // Options pauses the city. Same simulation frame means the cached rows are still current.
             if (s_HasSnapshot && s_LastSnapshotSimulationFrame == simulationFrame)
             {
-#if DEBUG
-                DebugLogStatusCache($"reuse frame={simulationFrame}");
-#endif
                 return;
             }
 
@@ -104,14 +134,9 @@ namespace MovingAwayFix
 
             s_HasSnapshot = true;
             s_LastSnapshotSimulationFrame = simulationFrame;
-
-#if DEBUG
-            DebugLogStatusCache(
-                $"build frame={simulationFrame}, movingAway={snapshot.MovingAwayNow:N0}, walking={snapshot.MovingAwayWalking:N0}, stillIgnoreTransport={snapshot.MovingAwayStillIgnoreTransport:N0}");
-#endif
         }
 
-        // Converts the raw snapshot numbers into localized player-facing rows.
+        // Converts raw snapshot numbers into compact player-facing rows.
         private static void ApplySnapshot(MovingAwayStatusSystem.Snapshot snapshot)
         {
             MovingAwayRow = LocaleUtils.SafeFormat(
@@ -145,7 +170,7 @@ namespace MovingAwayFix
                 updated);
         }
 
-        // Opening mod Options menu when no city is loaded yet.
+        // Opening mod Options before a city is loaded should not poke city ECS data.
         private static void SetNoCity()
         {
             s_HasSnapshot = false;
@@ -168,19 +193,5 @@ namespace MovingAwayFix
             MonthlyRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
             NoteRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
         }
-
-#if DEBUG
-        // Temporary DEBUG-only proof that Options status scans once per sim frame.
-        private static void DebugLogStatusCache(string message)
-        {
-            try
-            {
-                LogUtils.Info(Mod.s_Log, () => $"{Mod.ModTag} Status cache: {message}");
-            }
-            catch
-            {
-            }
-        }
-#endif
     }
 }
