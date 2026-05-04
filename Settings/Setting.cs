@@ -1,3 +1,5 @@
+// File: Settings/Setting.cs
+
 namespace MovingAwayFix
 {
     using Colossal.IO.AssetDatabase;
@@ -5,18 +7,21 @@ namespace MovingAwayFix
     using Game.Settings;
     using Game.UI;
     using System;
+    using Unity.Entities;
     using UnityEngine;
 
     [FileLocation("ModsSettings/MovingAwayFix/MovingAwayFix")]
     [SettingsUITabOrder(ActionsTab, AboutTab)]
     [SettingsUIGroupOrder(
         BehaviorGroup,
+        StatusGroup,
         DebugGroup,
         AboutInfoGroup,
         AboutLinksGroup
     )]
     [SettingsUIShowGroupName(
         BehaviorGroup,
+        StatusGroup,
         DebugGroup,
         AboutInfoGroup,
         AboutLinksGroup
@@ -27,6 +32,7 @@ namespace MovingAwayFix
         public const string AboutTab = "About";
 
         public const string BehaviorGroup = "Behavior";
+        public const string StatusGroup = "Status";
         public const string DebugGroup = "Debug";
         public const string AboutInfoGroup = "Info";
         public const string AboutLinksGroup = "Support Links";
@@ -45,6 +51,46 @@ namespace MovingAwayFix
         public bool EnableMovingAwayFix
         {
             get; set;
+        }
+
+        [SettingsUISection(ActionsTab, StatusGroup)]
+        public string StatusMovingAway
+        {
+            get
+            {
+                RefreshStatusSafe();
+                return MovingAwayStatus.MovingAwayRow;
+            }
+        }
+
+        [SettingsUISection(ActionsTab, StatusGroup)]
+        public string StatusMovingIn
+        {
+            get
+            {
+                RefreshStatusSafe();
+                return MovingAwayStatus.MovingInRow;
+            }
+        }
+
+        [SettingsUISection(ActionsTab, StatusGroup)]
+        public string StatusMonthly
+        {
+            get
+            {
+                RefreshStatusSafe();
+                return MovingAwayStatus.MonthlyRow;
+            }
+        }
+
+        [SettingsUISection(ActionsTab, StatusGroup)]
+        public string StatusNote
+        {
+            get
+            {
+                RefreshStatusSafe();
+                return MovingAwayStatus.NoteRow;
+            }
         }
 
         [SettingsUISection(AboutTab, DebugGroup)]
@@ -103,6 +149,17 @@ namespace MovingAwayFix
         {
             EnableMovingAwayFix = true;
             EnableDebugLogging = false;
+        }
+
+        private static void RefreshStatusSafe()
+        {
+            try
+            {
+                MovingAwayStatus.RefreshForOptionsUi();
+            }
+            catch
+            {
+            }
         }
     }
 }

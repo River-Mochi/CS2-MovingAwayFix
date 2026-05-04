@@ -1,3 +1,5 @@
+// File: Resources/LocaleEN.cs
+
 namespace MovingAwayFix
 {
     using Colossal;
@@ -30,6 +32,7 @@ namespace MovingAwayFix
                 { m_Setting.GetOptionTabLocaleID(Setting.AboutTab), "About" },
 
                 { m_Setting.GetOptionGroupLocaleID(Setting.BehaviorGroup), "Fix" },
+                { m_Setting.GetOptionGroupLocaleID(Setting.StatusGroup), "Status" },
                 { m_Setting.GetOptionGroupLocaleID(Setting.DebugGroup), "Debug / Logging" },
                 { m_Setting.GetOptionGroupLocaleID(Setting.AboutInfoGroup), "Info" },
                 { m_Setting.GetOptionGroupLocaleID(Setting.AboutLinksGroup), "Support Links" },
@@ -39,6 +42,22 @@ namespace MovingAwayFix
                     "Clears IgnoreTransport from moving-away residents so they can use public transport instead of walking to the outside connection.\n" +
                     "The mod also marks their path obsolete so vanilla repaths them right away.\n" +
                     "Tip: a direct bus or rail connection to the outside connection helps a lot." },
+
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMovingAway)), "Moving away now" },
+                { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusMovingAway)),
+                    "Current moving-away counts. This refreshes only when the Options menu is opened." },
+
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMovingIn)), "Moving in now" },
+                { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusMovingIn)),
+                    "Current active moving-in residents, using the same style of live creature-path count as the game's resident purpose counter." },
+
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMonthly)), "Population infoview" },
+                { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusMonthly)),
+                    "Moved-in and moved-away monthly totals from the vanilla Population infoview statistics." },
+
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusNote)), "Status note" },
+                { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusNote)),
+                    "Timestamp for the status snapshot." },
 
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.EnableDebugLogging)), "Enable debug logging" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.EnableDebugLogging)),
@@ -64,3 +83,4 @@ namespace MovingAwayFix
         }
     }
 }
+
