@@ -60,8 +60,8 @@ namespace MovingAwayFix
 
         protected override void OnUpdate()
         {
-            Setting? setting = Mod.Setting;
-            if (setting == null || !setting.EnableMovingAwayFix)
+            Setting setting = Mod.Setting!;  // ! tells compiler don't complain about null, we know it's not null.
+            if (setting == null || !setting.EnableMovingAwayFix)  // Redundant null check for safety, but should never be null here.
             {
                 return;
             }
