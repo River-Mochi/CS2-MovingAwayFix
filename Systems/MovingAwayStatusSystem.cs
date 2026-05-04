@@ -1,5 +1,5 @@
 // File: Systems/MovingAwayStatusSystem.cs
-// Snapshot counts for the Options UI. This system does not run during simulation updates.
+// Purpose: Read-only Options menu snapshot for Moving Away Fix status.
 
 namespace MovingAwayFix
 {
@@ -21,56 +21,54 @@ namespace MovingAwayFix
     {
         public readonly struct Snapshot
         {
-            public readonly long MovingAwayCitizenTotal;
-            public readonly long MovingAwayCreatureTotal;
-            public readonly long MovingAwayIgnoreTransportNow;
-            public readonly long MovingInCreatureTotal;
-            public readonly long MovedInThisMonth;
-            public readonly long MovedAwayThisMonth;
+            public readonly long MovingAwayNow;
+            public readonly long MovingAwayWalking;
+            public readonly long MovingAwayStillIgnoreTransport;
+            public readonly long MovingInNow;
+            public readonly long MovedInMonthly;
+            public readonly long MovedAwayMonthly;
+            public readonly uint SimulationFrame;
             public readonly DateTime SnapshotTimeLocal;
 
             public Snapshot(
-                long movingAwayCitizenTotal,
-                long movingAwayCreatureTotal,
-                long movingAwayIgnoreTransportNow,
-                long movingInCreatureTotal,
-                long movedInThisMonth,
-                long movedAwayThisMonth,
+                long movingAwayNow,
+                long movingAwayWalking,
+                long movingAwayStillIgnoreTransport,
+                long movingInNow,
+                long movedInMonthly,
+                long movedAwayMonthly,
+                uint simulationFrame,
                 DateTime snapshotTimeLocal)
             {
-                MovingAwayCitizenTotal = movingAwayCitizenTotal;
-                MovingAwayCreatureTotal = movingAwayCreatureTotal;
-                MovingAwayIgnoreTransportNow = movingAwayIgnoreTransportNow;
-                MovingInCreatureTotal = movingInCreatureTotal;
-                MovedInThisMonth = movedInThisMonth;
-                MovedAwayThisMonth = movedAwayThisMonth;
+                MovingAwayNow = movingAwayNow;
+                MovingAwayWalking = movingAwayWalking;
+                MovingAwayStillIgnoreTransport = movingAwayStillIgnoreTransport;
+                MovingInNow = movingInNow;
+                MovedInMonthly = movedInMonthly;
+                MovedAwayMonthly = movedAwayMonthly;
+                SimulationFrame = simulationFrame;
                 SnapshotTimeLocal = snapshotTimeLocal;
             }
         }
 
         private CityStatisticsSystem m_CityStatisticsSystem = null!;
-        private EntityQuery m_HouseholdMemberQuery;
-        private EntityQuery m_CreatureResidentQuery;
+        private SimulationSystem m_SimulationSystem = null!;
+        private EntityQuery m_ResidentQuery;
+
+        public uint CurrentSimulationFrame => m_SimulationSystem.frameIndex;
 
         protected override void OnCreate()
         {
             base.OnCreate();
 
             m_CityStatisticsSystem = World.GetOrCreateSystemManaged<CityStatisticsSystem>();
+            m_SimulationSystem = World.GetOrCreateSystemManaged<SimulationSystem>();
 
-            m_HouseholdMemberQuery = GetEntityQuery(
-                ComponentType.ReadOnly<HouseholdMember>(),
-                ComponentType.Exclude<Deleted>(),
-                ComponentType.Exclude<Temp>());
-
-            m_CreatureResidentQuery = GetEntityQuery(
-                ComponentType.ReadOnly<Game.Creatures.Resident>(),
-                ComponentType.ReadOnly<PathOwner>(),
-                ComponentType.ReadOnly<PathElement>(),
-                ComponentType.Exclude<Deleted>(),
-                ComponentType.Exclude<Destroyed>(),
-                ComponentType.Exclude<Temp>(),
-                ComponentType.Exclude<Unspawned>());
+            m_ResidentQuery = SystemAPI.QueryBuilder()
+                .WithAll<Resident, Human, PathOwner>()
+                .WithNone<Deleted, Destroyed, Temp>()
+                .WithNone<Unspawned>()
+                .Build();
 
             Enabled = false;
         }
@@ -81,143 +79,134 @@ namespace MovingAwayFix
 
         public Snapshot BuildSnapshot()
         {
-            ComponentLookup<HouseholdMember> householdMembers = GetComponentLookup<HouseholdMember>(isReadOnly: true);
-            ComponentLookup<MovingAway> movingAways = GetComponentLookup<MovingAway>(isReadOnly: true);
-            ComponentLookup<Household> households = GetComponentLookup<Household>(isReadOnly: true);
-            ComponentLookup<TravelPurpose> travelPurposes = GetComponentLookup<TravelPurpose>(isReadOnly: true);
-            ComponentLookup<CurrentBuilding> currentBuildings = GetComponentLookup<CurrentBuilding>(isReadOnly: true);
+            EntityTypeHandle entityType = GetEntityTypeHandle();
+            ComponentTypeHandle<Resident> residentType =
+                SystemAPI.GetComponentTypeHandle<Resident>(isReadOnly: true);
 
-            long movingAwayCitizenTotal = CountMovingAwayCitizens(
-                movingAways,
-                householdMembers);
+            ComponentLookup<HouseholdMember> householdMembers =
+                SystemAPI.GetComponentLookup<HouseholdMember>(isReadOnly: true);
 
-            CountActiveCreatures(
-                householdMembers,
-                movingAways,
-                households,
-                travelPurposes,
-                currentBuildings,
-                out long movingAwayCreatureTotal,
-                out long movingAwayIgnoreTransportNow,
-                out long movingInCreatureTotal);
+            ComponentLookup<MovingAway> movingAways =
+                SystemAPI.GetComponentLookup<MovingAway>(isReadOnly: true);
 
-            int movedInThisMonth = m_CityStatisticsSystem.GetStatisticValue(StatisticType.CitizensMovedIn);
-            int movedAwayThisMonth = m_CityStatisticsSystem.GetStatisticValue(StatisticType.CitizensMovedAway);
+            ComponentLookup<CurrentVehicle> currentVehicles =
+                SystemAPI.GetComponentLookup<CurrentVehicle>(isReadOnly: true);
 
-            return new Snapshot(
-                movingAwayCitizenTotal,
-                movingAwayCreatureTotal,
-                movingAwayIgnoreTransportNow,
-                movingInCreatureTotal,
-                movedInThisMonth,
-                movedAwayThisMonth,
-                DateTime.Now);
-        }
+            ComponentLookup<Household> households =
+                SystemAPI.GetComponentLookup<Household>(isReadOnly: true);
 
-        private long CountMovingAwayCitizens(
-            ComponentLookup<MovingAway> movingAways,
-            ComponentLookup<HouseholdMember> householdMembers)
-        {
-            long total = 0;
+            ComponentLookup<TouristHousehold> touristHouseholds =
+                SystemAPI.GetComponentLookup<TouristHousehold>(isReadOnly: true);
 
-            using (NativeArray<Entity> citizens = m_HouseholdMemberQuery.ToEntityArray(Allocator.Temp))
+            ComponentLookup<TravelPurpose> travelPurposes =
+                SystemAPI.GetComponentLookup<TravelPurpose>(isReadOnly: true);
+
+            ComponentLookup<CurrentBuilding> currentBuildings =
+                SystemAPI.GetComponentLookup<CurrentBuilding>(isReadOnly: true);
+
+            long movingAwayNow = 0;
+            long movingAwayWalking = 0;
+            long movingAwayStillIgnoreTransport = 0;
+            long movingInNow = 0;
+
+            using (NativeArray<ArchetypeChunk> chunks = m_ResidentQuery.ToArchetypeChunkArray(Allocator.Temp))
             {
-                for (int i = 0; i < citizens.Length; i++)
+                for (int chunkIndex = 0; chunkIndex < chunks.Length; chunkIndex++)
                 {
-                    Entity citizen = citizens[i];
+                    ArchetypeChunk chunk = chunks[chunkIndex];
 
-                    if (!householdMembers.HasComponent(citizen))
+                    NativeArray<Entity> entities = chunk.GetNativeArray(entityType);
+                    NativeArray<Resident> residents = chunk.GetNativeArray(ref residentType);
+
+                    for (int i = 0; i < residents.Length; i++)
                     {
-                        continue;
-                    }
+                        Entity creature = entities[i];
+                        Resident resident = residents[i];
 
-                    Entity household = householdMembers[citizen].m_Household;
-
-                    if (IsMovingAway(citizen, household, movingAways))
-                    {
-                        total++;
-                    }
-                }
-            }
-
-            return total;
-        }
-
-        private void CountActiveCreatures(
-            ComponentLookup<HouseholdMember> householdMembers,
-            ComponentLookup<MovingAway> movingAways,
-            ComponentLookup<Household> households,
-            ComponentLookup<TravelPurpose> travelPurposes,
-            ComponentLookup<CurrentBuilding> currentBuildings,
-            out long movingAwayCreatureTotal,
-            out long movingAwayIgnoreTransportNow,
-            out long movingInCreatureTotal)
-        {
-            movingAwayCreatureTotal = 0;
-            movingAwayIgnoreTransportNow = 0;
-            movingInCreatureTotal = 0;
-
-            using (NativeArray<Entity> entities = m_CreatureResidentQuery.ToEntityArray(Allocator.Temp))
-            {
-                for (int i = 0; i < entities.Length; i++)
-                {
-                    Entity creatureEntity = entities[i];
-                    Game.Creatures.Resident resident = EntityManager.GetComponentData<Game.Creatures.Resident>(creatureEntity);
-
-                    Entity citizen = resident.m_Citizen;
-                    if (citizen == Entity.Null || !householdMembers.HasComponent(citizen))
-                    {
-                        continue;
-                    }
-
-                    Entity household = householdMembers[citizen].m_Household;
-
-                    if (IsMovingAway(citizen, household, movingAways))
-                    {
-                        movingAwayCreatureTotal++;
-
-                        if ((resident.m_Flags & ResidentFlags.IgnoreTransport) != ResidentFlags.None)
+                        Entity citizen = resident.m_Citizen;
+                        if (citizen == Entity.Null || !householdMembers.HasComponent(citizen))
                         {
-                            movingAwayIgnoreTransportNow++;
+                            continue;
                         }
 
-                        continue;
-                    }
+                        Entity household = householdMembers[citizen].m_Household;
+                        if (household == Entity.Null)
+                        {
+                            continue;
+                        }
 
-                    if (IsMovingIn(citizen, household, households, travelPurposes, currentBuildings))
-                    {
-                        movingInCreatureTotal++;
+                        if (movingAways.HasComponent(household))
+                        {
+                            movingAwayNow++;
+
+                            if (IsWalking(creature, currentVehicles))
+                            {
+                                movingAwayWalking++;
+                            }
+
+                            if ((resident.m_Flags & ResidentFlags.IgnoreTransport) != 0)
+                            {
+                                movingAwayStillIgnoreTransport++;
+                            }
+
+                            continue;
+                        }
+
+                        if (IsMovingInNow(citizen, household, households, touristHouseholds, travelPurposes, currentBuildings))
+                        {
+                            movingInNow++;
+                        }
                     }
                 }
             }
+
+            long movedInMonthly = m_CityStatisticsSystem.GetStatisticValue(StatisticType.CitizensMovedIn);
+            long movedAwayMonthly = m_CityStatisticsSystem.GetStatisticValue(StatisticType.CitizensMovedAway);
+
+            return new Snapshot(
+                movingAwayNow: movingAwayNow,
+                movingAwayWalking: movingAwayWalking,
+                movingAwayStillIgnoreTransport: movingAwayStillIgnoreTransport,
+                movingInNow: movingInNow,
+                movedInMonthly: movedInMonthly,
+                movedAwayMonthly: movedAwayMonthly,
+                simulationFrame: m_SimulationSystem.frameIndex,
+                snapshotTimeLocal: DateTime.Now);
         }
 
-        private static bool IsMovingAway(
-            Entity citizen,
-            Entity household,
-            ComponentLookup<MovingAway> movingAways)
+        private static bool IsWalking(Entity creature, ComponentLookup<CurrentVehicle> currentVehicles)
         {
-            if (household != Entity.Null && movingAways.HasComponent(household))
+            if (!currentVehicles.HasComponent(creature))
             {
                 return true;
             }
 
-            return citizen != Entity.Null && movingAways.HasComponent(citizen);
+            CurrentVehicle currentVehicle = currentVehicles[creature];
+
+            return currentVehicle.m_Vehicle == Entity.Null ||
+                   currentVehicle.m_Vehicle == creature;
         }
 
-        private static bool IsMovingIn(
+        private static bool IsMovingInNow(
             Entity citizen,
             Entity household,
             ComponentLookup<Household> households,
+            ComponentLookup<TouristHousehold> touristHouseholds,
             ComponentLookup<TravelPurpose> travelPurposes,
             ComponentLookup<CurrentBuilding> currentBuildings)
         {
-            if (citizen == Entity.Null || household == Entity.Null)
+            if (!households.HasComponent(household))
             {
                 return false;
             }
 
-            if (!households.HasComponent(household))
+            if (touristHouseholds.HasComponent(household))
+            {
+                return false;
+            }
+
+            Household householdData = households[household];
+            if ((householdData.m_Flags & HouseholdFlags.MovedIn) != 0)
             {
                 return false;
             }
@@ -232,8 +221,7 @@ namespace MovingAwayFix
                 return false;
             }
 
-            Household householdData = households[household];
-            return (householdData.m_Flags & HouseholdFlags.MovedIn) == 0;
+            return true;
         }
     }
 }

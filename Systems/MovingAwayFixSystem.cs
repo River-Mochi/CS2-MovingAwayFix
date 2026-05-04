@@ -1,5 +1,9 @@
+// File: Systems/MovingAwayFixSystem.cs
+// Purpose: Live simulation fix for moving-away residents with IgnoreTransport.
+
 namespace MovingAwayFix
 {
+    using Colossal.Serialization.Entities; // Purpose
     using CS2Shared.RiverMochi;
     using Game;
     using Game.Agents;
@@ -8,9 +12,10 @@ namespace MovingAwayFix
     using Game.Creatures;
     using Game.Pathfind;
     using Game.Tools;
+    using Unity.Burst;
     using Unity.Burst.Intrinsics;
     using Unity.Collections;
-    using Unity.Entities;
+    using Unity.Entities;       // SystemAPI
     using Unity.Jobs;
 
     public sealed partial class MovingAwayFixSystem : GameSystemBase
@@ -20,6 +25,7 @@ namespace MovingAwayFix
         private ComponentLookup<HouseholdMember> m_HouseholdMemberLookup;
         private ComponentLookup<MovingAway> m_MovingAwayLookup;
 
+        //262,144 ticks/day ÷ 1,024 = 256 runs per in-game day
         public override int GetUpdateInterval(SystemUpdatePhase phase)
         {
             return 1024;
@@ -31,7 +37,7 @@ namespace MovingAwayFix
 
             m_Query = SystemAPI.QueryBuilder()
                 .WithAll<Resident, PathOwner>()
-                .WithNone<Deleted, Temp>()
+                .WithNone<Deleted, Destroyed, Temp>()
                 .Build();
 
             m_HouseholdMemberLookup = GetComponentLookup<HouseholdMember>(isReadOnly: true);
@@ -47,20 +53,18 @@ namespace MovingAwayFix
 
             bool isRealGame =
                 mode == GameMode.Game &&
-                (purpose == Colossal.Serialization.Entities.Purpose.NewGame ||
-                 purpose == Colossal.Serialization.Entities.Purpose.LoadGame);
+                (purpose == Colossal.Serialization.Entities.Purpose.NewGame || purpose == Colossal.Serialization.Entities.Purpose.LoadGame);
 
-            if (!isRealGame)
-                return;
-
-            Enabled = true;
+            Enabled = isRealGame;
         }
 
         protected override void OnUpdate()
         {
-            var setting = Mod.Setting;
+            Setting? setting = Mod.Setting;
             if (setting == null || !setting.EnableMovingAwayFix)
+            {
                 return;
+            }
 
             m_HouseholdMemberLookup.Update(this);
             m_MovingAwayLookup.Update(this);
@@ -69,7 +73,9 @@ namespace MovingAwayFix
             NativeArray<int> cleared = default;
 
             if (trackClearedCount)
+            {
                 cleared = new NativeArray<int>(1, Allocator.TempJob);
+            }
 
             var job = new ClearIgnoreTransportJob
             {
@@ -103,6 +109,7 @@ namespace MovingAwayFix
             Dependency = handle;
         }
 
+        [BurstCompile]
         private struct ClearIgnoreTransportJob : IJobChunk
         {
             public ComponentTypeHandle<Resident> ResidentType;
@@ -124,15 +131,21 @@ namespace MovingAwayFix
                     Resident resident = residents[i];
 
                     if ((resident.m_Flags & ResidentFlags.IgnoreTransport) == 0)
+                    {
                         continue;
+                    }
 
                     Entity citizen = resident.m_Citizen;
                     if (citizen == Entity.Null || !HouseholdMembers.HasComponent(citizen))
+                    {
                         continue;
+                    }
 
                     Entity household = HouseholdMembers[citizen].m_Household;
                     if (household == Entity.Null || !MovingAways.HasComponent(household))
+                    {
                         continue;
+                    }
 
                     resident.m_Flags &= ~ResidentFlags.IgnoreTransport;
                     residents[i] = resident;
@@ -143,7 +156,9 @@ namespace MovingAwayFix
                     pathOwners[i] = pathOwner;
 
                     if (TrackClearedCount)
+                    {
                         ClearedCount[0] = ClearedCount[0] + 1;
+                    }
                 }
             }
         }

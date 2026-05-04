@@ -1,13 +1,12 @@
 // File: Settings/Setting.cs
+// Purpose: Options UI for Moving Away Fix.
 
 namespace MovingAwayFix
 {
     using Colossal.IO.AssetDatabase;
     using Game.Modding;
     using Game.Settings;
-    using Game.UI;
     using System;
-    using Unity.Entities;
     using UnityEngine;
 
     [FileLocation("ModsSettings/MovingAwayFix/MovingAwayFix")]
@@ -113,7 +112,9 @@ namespace MovingAwayFix
             set
             {
                 if (!value)
+                {
                     return;
+                }
 
                 try
                 {
@@ -133,7 +134,9 @@ namespace MovingAwayFix
             set
             {
                 if (!value)
+                {
                     return;
+                }
 
                 try
                 {

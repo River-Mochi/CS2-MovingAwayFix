@@ -1,47 +1,72 @@
 // File: Systems/MovingAwayStatus.cs
-// UI-facing cached status lines for the Options UI.
+// Purpose: UI-facing cached status rows for the Options menu.
 
 namespace MovingAwayFix
 {
+    using CS2Shared.RiverMochi;
     using Game;
     using Game.SceneFlow;
     using System;
     using Unity.Entities;
-    using UnityEngine;
 
     public static class MovingAwayStatus
     {
-        private const int NewOptionsVisitFrameGap = 30;
+        internal const string KeyStatusNotLoaded = "MAF_STATUS_NOT_LOADED";
+        internal const string KeyNoCity = "MAF_STATUS_NO_CITY";
 
-        private const string StatusNotLoaded = "Status not loaded.";
-        private const string NoCity = "No city loaded, run the city for a bit to get data.";
-        private const string Disabled = "Moving-away fix is OFF.";
+        internal const string KeyMovingAwayRow = "MAF_STATUS_MOVING_AWAY_ROW";
+        internal const string KeyMovingInRow = "MAF_STATUS_MOVING_IN_ROW";
+        internal const string KeyMonthlyRow = "MAF_STATUS_MONTHLY_ROW";
+        internal const string KeyNoteRow = "MAF_STATUS_NOTE_ROW";
 
-        public static string MovingAwayRow { get; private set; } = StatusNotLoaded;
-        public static string MovingInRow { get; private set; } = StatusNotLoaded;
-        public static string MonthlyRow { get; private set; } = StatusNotLoaded;
-        public static string NoteRow { get; private set; } = StatusNotLoaded;
+        private const string FallbackStatusNotLoaded = "Status not loaded.";
+        private const string FallbackNoCity = "No city loaded, run the city for a bit to get data.";
 
-        private static int s_LastOptionsUiFrame = -100000;
-        private static bool s_WasInGame;
-        private static bool s_HasSnapshotThisOptionsVisit;
+        private const string FallbackMovingAwayRow =
+            "Moving away: {0} now | {1} walking | {2} still IgnoreTransport";
 
-        public static void MarkDirty()
+        private const string FallbackMovingInRow =
+            "Moving in: {0} active now";
+
+        private const string FallbackMonthlyRow =
+            "Population infoview: {0} moved in/month | {1} moved away/month";
+
+        private const string FallbackNoteRow =
+            "{0} | updated {1} | Options-only scan";
+
+        public static string MovingAwayRow { get; private set; } = string.Empty;
+        public static string MovingInRow { get; private set; } = string.Empty;
+        public static string MonthlyRow { get; private set; } = string.Empty;
+        public static string NoteRow { get; private set; } = string.Empty;
+
+        private static bool s_HasSnapshot;
+        private static uint s_LastSnapshotSimulationFrame = uint.MaxValue;
+
+        public static void InvalidateCache()
         {
-            s_HasSnapshotThisOptionsVisit = false;
+            s_HasSnapshot = false;
+            s_LastSnapshotSimulationFrame = uint.MaxValue;
+
+            MovingAwayRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
+            MovingInRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
+            MonthlyRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
+            NoteRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
         }
 
         public static void RefreshForOptionsUi()
         {
-            int frame = Time.frameCount;
-            bool newOptionsVisit = s_LastOptionsUiFrame < 0 || frame - s_LastOptionsUiFrame > NewOptionsVisitFrameGap;
-            s_LastOptionsUiFrame = frame;
-
-            if (!newOptionsVisit && s_HasSnapshotThisOptionsVisit)
+            try
             {
-                return;
+                RefreshForOptionsUiCore();
             }
+            catch
+            {
+                SetStatusNotLoaded();
+            }
+        }
 
+        private static void RefreshForOptionsUiCore()
+        {
             World world = World.DefaultGameObjectInjectionWorld;
             if (world == null || !world.IsCreated)
             {
@@ -52,83 +77,82 @@ namespace MovingAwayFix
             GameManager gm = GameManager.instance;
             bool isGame = gm != null && gm.gameMode.IsGame();
 
-            if (isGame != s_WasInGame)
-            {
-                s_WasInGame = isGame;
-                s_HasSnapshotThisOptionsVisit = false;
-            }
-
             if (!isGame)
             {
                 SetNoCity();
-                s_HasSnapshotThisOptionsVisit = true;
                 return;
             }
 
-            Setting? setting = Mod.Setting;
-            if (setting == null || !setting.EnableMovingAwayFix)
+            MovingAwayStatusSystem statusSystem =
+                world.GetOrCreateSystemManaged<MovingAwayStatusSystem>();
+
+            uint simulationFrame = statusSystem.CurrentSimulationFrame;
+
+            if (s_HasSnapshot && s_LastSnapshotSimulationFrame == simulationFrame)
             {
-                SetDisabled();
-                s_HasSnapshotThisOptionsVisit = true;
                 return;
             }
 
-            BuildSnapshotSafe(world);
-            s_HasSnapshotThisOptionsVisit = true;
+            MovingAwayStatusSystem.Snapshot snapshot = statusSystem.BuildSnapshot();
+            ApplySnapshot(snapshot);
+
+            s_HasSnapshot = true;
+            s_LastSnapshotSimulationFrame = simulationFrame;
         }
 
-        private static void BuildSnapshotSafe(World world)
+        private static void ApplySnapshot(MovingAwayStatusSystem.Snapshot snapshot)
         {
-            try
-            {
-                MovingAwayStatusSystem system = world.GetOrCreateSystemManaged<MovingAwayStatusSystem>();
-                MovingAwayStatusSystem.Snapshot snapshot = system.BuildSnapshot();
+            MovingAwayRow = LocaleUtils.SafeFormat(
+                KeyMovingAwayRow,
+                FallbackMovingAwayRow,
+                LocaleUtils.FormatN0(snapshot.MovingAwayNow),
+                LocaleUtils.FormatN0(snapshot.MovingAwayWalking),
+                LocaleUtils.FormatN0(snapshot.MovingAwayStillIgnoreTransport));
 
-                string updated = snapshot.SnapshotTimeLocal.ToString("HH:mm:ss");
+            MovingInRow = LocaleUtils.SafeFormat(
+                KeyMovingInRow,
+                FallbackMovingInRow,
+                LocaleUtils.FormatN0(snapshot.MovingInNow));
 
-                MovingAwayRow =
-                    $"Moving away: {FormatN0(snapshot.MovingAwayCitizenTotal)} citizens | " +
-                    $"{FormatN0(snapshot.MovingAwayCreatureTotal)} active/walking | " +
-                    $"{FormatN0(snapshot.MovingAwayIgnoreTransportNow)} still IgnoreTransport";
+            MonthlyRow = LocaleUtils.SafeFormat(
+                KeyMonthlyRow,
+                FallbackMonthlyRow,
+                LocaleUtils.FormatN0(snapshot.MovedInMonthly),
+                LocaleUtils.FormatN0(snapshot.MovedAwayMonthly));
 
-                MovingInRow =
-                    $"Moving in now: {FormatN0(snapshot.MovingInCreatureTotal)} active residents";
+            string fixState = Mod.Setting?.EnableMovingAwayFix == true
+                ? "Fix ON"
+                : "Fix OFF";
 
-                MonthlyRow =
-                    $"This month: {FormatN0(snapshot.MovedInThisMonth)} moved in | " +
-                    $"{FormatN0(snapshot.MovedAwayThisMonth)} moved away";
+            string updated = snapshot.SnapshotTimeLocal.ToString("HH:mm:ss");
 
-                NoteRow =
-                    $"Updated {updated}. Status scan runs only from the Options menu.";
-            }
-            catch
-            {
-                MovingAwayRow = StatusNotLoaded;
-                MovingInRow = StatusNotLoaded;
-                MonthlyRow = StatusNotLoaded;
-                NoteRow = StatusNotLoaded;
-            }
+            NoteRow = LocaleUtils.SafeFormat(
+                KeyNoteRow,
+                FallbackNoteRow,
+                fixState,
+                updated);
         }
 
         private static void SetNoCity()
         {
-            MovingAwayRow = NoCity;
+            s_HasSnapshot = false;
+            s_LastSnapshotSimulationFrame = uint.MaxValue;
+
+            MovingAwayRow = LocaleUtils.Localize(KeyNoCity, FallbackNoCity);
             MovingInRow = string.Empty;
             MonthlyRow = string.Empty;
             NoteRow = string.Empty;
         }
 
-        private static void SetDisabled()
+        private static void SetStatusNotLoaded()
         {
-            MovingAwayRow = Disabled;
-            MovingInRow = string.Empty;
-            MonthlyRow = string.Empty;
-            NoteRow = "Turn ON the fix to refresh live moving-away status.";
-        }
+            s_HasSnapshot = false;
+            s_LastSnapshotSimulationFrame = uint.MaxValue;
 
-        private static string FormatN0(long value)
-        {
-            return value.ToString("N0");
+            MovingAwayRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
+            MovingInRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
+            MonthlyRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
+            NoteRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
         }
     }
 }
