@@ -42,6 +42,7 @@ namespace MovingAwayFix
         private static bool s_HasSnapshot;
         private static uint s_LastSnapshotSimulationFrame = uint.MaxValue;
 
+        // Clears cached rows when loading state changes or status becomes invalid.
         public static void InvalidateCache()
         {
             s_HasSnapshot = false;
@@ -53,6 +54,7 @@ namespace MovingAwayFix
             NoteRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
         }
 
+        // Called by Options UI string getters. This must stay safe and quiet.
         public static void RefreshForOptionsUi()
         {
             try
@@ -74,10 +76,9 @@ namespace MovingAwayFix
                 return;
             }
 
+            // IsGame means a city/game session is loaded. Main menu gets the no-city message.
             GameManager gm = GameManager.instance;
-            bool isGame = gm != null && gm.gameMode.IsGame();
-
-            if (!isGame)
+            if (gm == null || !gm.gameMode.IsGame())
             {
                 SetNoCity();
                 return;
@@ -88,8 +89,13 @@ namespace MovingAwayFix
 
             uint simulationFrame = statusSystem.CurrentSimulationFrame;
 
+            // Options menu pauses the city, so the sim frame should not advance there.
+            // Same frame = reuse cached rows and avoid repeated status scans.
             if (s_HasSnapshot && s_LastSnapshotSimulationFrame == simulationFrame)
             {
+#if DEBUG
+                DebugLogStatusCache($"reuse frame={simulationFrame}");
+#endif
                 return;
             }
 
@@ -98,8 +104,14 @@ namespace MovingAwayFix
 
             s_HasSnapshot = true;
             s_LastSnapshotSimulationFrame = simulationFrame;
+
+#if DEBUG
+            DebugLogStatusCache(
+                $"build frame={simulationFrame}, movingAway={snapshot.MovingAwayNow:N0}, walking={snapshot.MovingAwayWalking:N0}, stillIgnoreTransport={snapshot.MovingAwayStillIgnoreTransport:N0}");
+#endif
         }
 
+        // Converts the raw snapshot numbers into localized player-facing rows.
         private static void ApplySnapshot(MovingAwayStatusSystem.Snapshot snapshot)
         {
             MovingAwayRow = LocaleUtils.SafeFormat(
@@ -133,6 +145,7 @@ namespace MovingAwayFix
                 updated);
         }
 
+        // Used before a city exists
         private static void SetNoCity()
         {
             s_HasSnapshot = false;
@@ -144,6 +157,7 @@ namespace MovingAwayFix
             NoteRow = string.Empty;
         }
 
+        // Used only when status refresh fails unexpectedly.
         private static void SetStatusNotLoaded()
         {
             s_HasSnapshot = false;
@@ -154,5 +168,19 @@ namespace MovingAwayFix
             MonthlyRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
             NoteRow = LocaleUtils.Localize(KeyStatusNotLoaded, FallbackStatusNotLoaded);
         }
+
+#if DEBUG
+        // Temporary DEBUG-only proof that Options status scans once per sim frame.
+        private static void DebugLogStatusCache(string message)
+        {
+            try
+            {
+                LogUtils.Info(Mod.s_Log, () => $"{Mod.ModTag} Status cache: {message}");
+            }
+            catch
+            {
+            }
+        }
+#endif
     }
 }
