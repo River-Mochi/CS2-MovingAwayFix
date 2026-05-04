@@ -145,7 +145,7 @@ namespace MovingAwayFix
                 updated);
         }
 
-        // Used before a city exists
+        // Opening mod Options menu when no city is loaded yet.
         private static void SetNoCity()
         {
             s_HasSnapshot = false;

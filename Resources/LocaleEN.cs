@@ -38,21 +38,21 @@ namespace MovingAwayFix
                 { m_Setting.GetOptionGroupLocaleID(Setting.AboutInfoGroup), "Info" },
                 { m_Setting.GetOptionGroupLocaleID(Setting.AboutLinksGroup), "Support Links" },
 
-                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.EnableMovingAwayFix)), "Enable moving-away fix" },
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.EnableMovingAwayFix)), "No Highway Walkers" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.EnableMovingAwayFix)),
                     "Clears IgnoreTransport from moving-away residents so vanilla pathfinding can consider public transport again.\n" +
                     "The mod also marks their path obsolete so vanilla repaths them right away.\n" +
                     "Tip: a direct bus or rail connection to the outside connection helps a lot." },
 
-                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMovingAway)), "Moving away now" },
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMovingAway)), "Moving away" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusMovingAway)),
                     "Current moving-away residents. Status scans only when the Options menu asks for this row." },
 
-                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMovingIn)), "Moving in now" },
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMovingIn)), "Moving in" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusMovingIn)),
                     "Current active moving-in residents. This is informational only." },
 
-                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMonthly)), "Population infoview" },
+                { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMonthly)), "Population monthly" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusMonthly)),
                     "Moved-in and moved-away monthly totals from the vanilla Population infoview statistics." },
 
@@ -81,16 +81,16 @@ namespace MovingAwayFix
                 { MovingAwayStatus.KeyNoCity, "No city loaded, run the city for a bit to get data." },
 
                 { MovingAwayStatus.KeyMovingAwayRow,
-                    "Moving away: {0} now | {1} walking | {2} still IgnoreTransport" },
+                    "{0} now | {1} walking | {2} still Ignore Transport" },
 
                 { MovingAwayStatus.KeyMovingInRow,
-                    "Moving in: {0} active now" },
+                    "{0} active now" },
 
                 { MovingAwayStatus.KeyMonthlyRow,
-                    "Population infoview: {0} moved in/month | {1} moved away/month" },
+                    "{0} moved in/mo. | {1} moved away/mo." },
 
                 { MovingAwayStatus.KeyNoteRow,
-                    "{0} | updated {1} | Options-only scan" },
+                    "{0} | Options-only scan | updated {1}" },
             };
         }
 
