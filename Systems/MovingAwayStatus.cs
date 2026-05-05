@@ -22,7 +22,7 @@ namespace MovingAwayFix
         private const string FallbackNoCity = "No city loaded, run the city for a bit to get data.";
 
         private const string FallbackMovingAwayRow =
-            "{0} leaving | {1} walking | {2} IgnoreTransport";
+            "{0} leaving | {1} walking | {2} highway | {3} IgnoreTransport";
 
         private const string FallbackMovingInRow =
             "{0} active now";
@@ -66,7 +66,7 @@ namespace MovingAwayFix
             }
         }
 
-        // Button action: writes a readable one-time report to the mod log.
+        // Button action: writes a one-time detailed report to the mod log.
         public static void LogDetailedReport()
         {
             try
@@ -90,10 +90,6 @@ namespace MovingAwayFix
 
                 string report = statusSystem.BuildDetailedReport();
                 LogUtils.Info(Mod.s_Log, () => report);
-
-                // Refresh compact UI rows from the same button action.
-                s_HasSnapshot = false;
-                RefreshForOptionsUi();
             }
             catch
             {
@@ -123,7 +119,7 @@ namespace MovingAwayFix
 
             uint simulationFrame = statusSystem.CurrentSimulationFrame;
 
-            // Options pauses the city. Same simulation frame means the cached rows are still current.
+            // Options pauses the city. Same simulation frame means cached rows are still current.
             if (s_HasSnapshot && s_LastSnapshotSimulationFrame == simulationFrame)
             {
                 return;
@@ -144,6 +140,7 @@ namespace MovingAwayFix
                 FallbackMovingAwayRow,
                 LocaleUtils.FormatN0(snapshot.MovingAwayNow),
                 LocaleUtils.FormatN0(snapshot.MovingAwayWalking),
+                LocaleUtils.FormatN0(snapshot.MovingAwayHighwayWalking),
                 LocaleUtils.FormatN0(snapshot.MovingAwayStillIgnoreTransport));
 
             MovingInRow = LocaleUtils.SafeFormat(

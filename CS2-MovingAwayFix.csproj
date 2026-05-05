@@ -29,6 +29,10 @@
 		<Reference Include="Colossal.Logging">
 			<Private>false</Private>
 		</Reference>
+        <Reference Include="Colossal.Mathematics">
+            <Private>false</Private>
+        </Reference>
+
 		<Reference Include="Colossal.IO.AssetDatabase">
 			<Private>false</Private>
 		</Reference>

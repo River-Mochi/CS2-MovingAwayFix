@@ -41,11 +41,11 @@ namespace MovingAwayFix
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.EnableMovingAwayFix)), "No Highway Walkers" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.EnableMovingAwayFix)),
                     "Fixes moving-out cims who get stuck walking for miles on highways instead of using nearby public transport.\n" +
-                    "Clears IgnoreTransport from moving-away residents so vanilla pathfinding can consider public transport again.\n"
+                    "Clears IgnoreTransport from moving-away residents so vanilla pathfinding can consider public transport again." },
 
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMovingAway)), "Moving out" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusMovingAway)),
-                    "Current moving-away residents. For the best performance, Status scans only when in the Options menu, never in the city per frame." },
+                    "Current moving-away residents. For best performance, status scans only from the Options menu." },
 
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatusMovingIn)), "Moving in" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatusMovingIn)),
@@ -61,7 +61,7 @@ namespace MovingAwayFix
 
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.StatsToLog)), "Stats to Log" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.StatsToLog)),
-                    "Writes current status counts and 5 walking moving-away sample IDs to the mod log for Scene Explorer checks." },
+                    "Writes current status counts and up to 5 moving-out highway walker sample IDs to the mod log." },
 
                 { m_Setting.GetOptionLabelLocaleID(nameof(Setting.OpenLog)), "Open Log" },
                 { m_Setting.GetOptionDescLocaleID(nameof(Setting.OpenLog)),
@@ -88,7 +88,7 @@ namespace MovingAwayFix
                 { MovingAwayStatus.KeyNoCity, "No city loaded, run the city for a bit to get data." },
 
                 { MovingAwayStatus.KeyMovingAwayRow,
-                    "{0} leaving | {1} walking | {2} IgnoreTransport" },
+                    "{0} leaving | {1} walking | {2} highway | {3} IgnoreTransport" },
 
                 { MovingAwayStatus.KeyMovingInRow,
                     "{0} active now" },
